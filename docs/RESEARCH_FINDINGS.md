@@ -27,13 +27,13 @@ The Home Credit Default Risk competition (and almost all serious credit-default 
 |------------|------|----------|------------|-------------|--------|
 | Sample pack `models/` | 50k | ~140 | **0.749** | 0.743 | Comparison only |
 | Multi-table research | 30k | ~312 | **0.759** | 0.752 | Ablation |
-| **PRIMARY full data + HP tune** `models/full_data/` | **307,511** | 140 | 0.752 | **0.769** | Academic train/val/test + tuning; production **XGB** |
+| **PRIMARY full data + HP tune** `models/full_data/` | **307,511** | 140 | 0.752 | **0.769** | Academic train/val/test + tuning; production **XGB**; τ=`middle_ground` (acc 86.2%, rec 40.1%) |
 
-Authoritative numbers: `STATUS.md` and `models/full_data/metrics_summary.md`.
+Authoritative numbers: `STATUS.md`, `docs/OPERATING_POLICY.md`, and `models/full_data/metrics_summary.md`.
 
 ---
 
-## 3. Why precision ~16% is not “the model is random”
+## 3. Why precision ~27% (at production τ) is not “the model is random”
 
 With base rate \(\pi \approx 0.08\):
 
@@ -41,7 +41,8 @@ With base rate \(\pi \approx 0.08\):
 \text{Precision} = \frac{\text{TPR}\cdot\pi}{\text{TPR}\cdot\pi + \text{FPR}\cdot(1-\pi)}
 \]
 
-Example: recall 70%, specificity 70% (FPR 30%) ⇒ precision ≈ **17%** and lift ≈ **2.1×**.
+Example: recall 70%, specificity 70% (FPR 30%) ⇒ precision ≈ **17%** and lift ≈ **2.1×**.  
+At our production middle-ground point, precision ≈ **27%** with lift ≈ **3.3×**.
 
 Our extended metrics report (app-only upgrade):
 
@@ -57,7 +58,7 @@ So the model has ranking skill; low precision at a high-recall threshold is **ba
 | Technique | Verdict for this project |
 |-----------|---------------------------|
 | Class weights / `scale_pos_weight` | **Use** (already) |
-| Threshold optimization | **Use** (Youden/F1; report full sweep) |
+| Threshold optimization | **Use** (`middle_ground` production; Youden/F1/max_accuracy comparison; report full sweep) |
 | PR-AUC + lift + precision@top-k | **Report** (now in `metrics.json`) |
 | SMOTE on XGBoost | **Usually skip** — little AUC gain, hurts calibration |
 | Multi-table FE | **Highest real AUC lift** |
@@ -84,7 +85,7 @@ Literature comparing SMOTE vs class weights vs threshold adjustment finds thresh
 
 1. Base rate is 8% — precision alone is prevalence-dependent.  
 2. Report lift and ROC-AUC (Kaggle metric).  
-3. 16% precision ≈ 2× base rate at high recall is skill.  
+3. ~27% precision ≈ 3.3× base rate at the middle-ground operating point is skill.  
 4. We can raise precision by raising τ (with lower recall).  
 5. Real upgrades = multi-table history + full data, not only “balance the CSV with SMOTE.”
 

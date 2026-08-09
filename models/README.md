@@ -11,7 +11,7 @@
 | `full_data/metrics_summary.md` | Human table |
 | `full_data/README.md` | How to switch packs |
 
-Production: **XGBoost** (hyperparameter-tuned), test ROC-AUC **0.769**, τ ≈ **0.269** (validation Youden).
+Production: **XGBoost** (hyperparameter-tuned), test ROC-AUC **0.769**, accuracy **86.2%**, recall **40.1%**, τ = **0.51** (`middle_ground` on validation). See `docs/OPERATING_POLICY.md`.
 
 `config.py` selects this pack automatically when the joblib file exists.
 

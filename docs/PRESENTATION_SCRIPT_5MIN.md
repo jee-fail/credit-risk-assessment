@@ -22,7 +22,7 @@ cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
 .\.venv\Scripts\python.exe -m streamlit run dashboard/app.py
 ```
 
-**Memorize these 6 numbers:**
+**Memorize these numbers:**
 
 | Fact | Number |
 |------|--------|
@@ -30,7 +30,11 @@ cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
 | Default rate | **~8%** |
 | Dummy ROC-AUC | **0.50** |
 | XGBoost test ROC-AUC | **0.77** |
-| Lift @ threshold | **~1.9×** |
+| Test accuracy | **86.2%** |
+| Test recall | **40.1%** |
+| Test precision | **26.5%** |
+| Lift @ threshold | **~3.3×** |
+| Threshold τ | **0.51** (`middle_ground`) |
 | Production model | **XGBoost (tuned)** |
 
 ---
@@ -90,7 +94,7 @@ cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
 >
 > Primary ranking metric is **ROC-AUC**, which is also the Home Credit competition metric. I also report **PR-AUC**, because positives are rare.
 >
-> A common criticism is that precision looks low—around 15%. With an **8% base rate**, that is expected at a high-recall operating point. The right comparison is **lift**: at our threshold, flagged applicants default about **1.9 times** more often than average. The top 10% riskiest scores contain about **28%** true defaults—far above 8%. So the model concentrates risk; it is not random.”
+> We chose a **middle-ground** threshold on validation only: keep accuracy at least **80%** and recall at least **35%**, then maximize F1. On the held-out test set that yields about **86% accuracy**, **40% recall**, **27% precision**, and **3.3× lift**. ROC-AUC stays **0.77**. Maximizing accuracy alone would hit ~92% but catch only ~7% of defaulters—so we deliberately balance the metrics.”
 
 **On screen:** `STATUS.md` or `models/full_data/metrics_summary.md` table.
 
@@ -167,7 +171,7 @@ cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
 ## Anticipated Q&A (prepare, don’t read)
 
 ### “Why is precision so low?”
-> “Base rate is 8%. At high recall, precision is mathematically capped. Our lift is about 1.9× and top-decile precision about 28%. Ranking skill is ROC-AUC 0.77 vs 0.50 dummy.”
+> “Base rate is 8%. Our middle-ground policy reports accuracy 86%, recall 40%, precision 27%, lift 3.3×, ROC-AUC 0.77 vs dummy 0.50. Threshold selected on validation only—test never used for choosing τ.”
 
 ### “Why not accuracy?”
 > “Always-approve is ~92% accurate and useless. Accuracy hides failure on the rare class.”

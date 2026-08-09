@@ -52,7 +52,8 @@ FULL_METRICS_PATH = _FULL_DATA_DIR / "metrics.json"
 TARGET_COL = "TARGET"
 ID_COL = "SK_ID_CURR"
 # Fallback only when threshold not stored in the bundle
-DEFAULT_THRESHOLD = float(os.environ.get("CREDIT_RISK_THRESHOLD", "0.5"))
+# Production pack stores τ from middle_ground policy (~0.51); 0.5 is a close safe default.
+DEFAULT_THRESHOLD = float(os.environ.get("CREDIT_RISK_THRESHOLD", "0.51"))
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 # 0 = full dataset for CLI default academic runs; override with CREDIT_RISK_SAMPLE_SIZE
@@ -69,8 +70,16 @@ PROJECT_STATUS = {
     "primary_model_pack": "models/full_data",
     "primary_rows": 307511,
     "primary_production_model": "xgboost",
+    "primary_threshold": 0.51,
+    "threshold_strategy": "middle_ground",
+    "primary_test_accuracy": 0.8620,
+    "primary_test_balanced_accuracy": 0.6518,
+    "primary_test_precision": 0.2654,
+    "primary_test_recall": 0.4010,
     "primary_test_roc_auc": 0.769,
+    "primary_test_pr_auc": 0.261,
     "lifecycle": "academic_v2_train_val_test",
     "hyperparameter_tuning_on_full_data": True,
+    "operating_policy_doc": "docs/OPERATING_POLICY.md",
     "sample_model_pack": "models/ (50k comparison)",
 }

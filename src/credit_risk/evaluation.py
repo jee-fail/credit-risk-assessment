@@ -11,7 +11,9 @@ from typing import Any
 
 import numpy as np
 from sklearn.metrics import (
+    accuracy_score,
     average_precision_score,
+    balanced_accuracy_score,
     brier_score_loss,
     confusion_matrix,
     f1_score,
@@ -42,6 +44,8 @@ def metrics_at_threshold(
     flagged_rate = float(pred.mean())
     return {
         "threshold": float(threshold),
+        "accuracy": float(accuracy_score(y, pred)),
+        "balanced_accuracy": float(balanced_accuracy_score(y, pred)),
         "precision": prec,
         "recall": rec,
         "f1": float(f1_score(y, pred, zero_division=0)),
@@ -53,6 +57,11 @@ def metrics_at_threshold(
         "tn": int(tn),
         "fn": int(fn),
         "specificity": float(tn / (tn + fp)) if (tn + fp) else 0.0,
+        "false_positive_rate": float(fp / (fp + tn)) if (fp + tn) else 0.0,
+        "false_negative_rate": float(fn / (fn + tp)) if (fn + tp) else 0.0,
+        "npv": float(tn / (tn + fn)) if (tn + fn) else 0.0,  # negative predictive value
+        "fpr": float(fp / (fp + tn)) if (fp + tn) else 0.0,
+        "fnr": float(fn / (fn + tp)) if (fn + tp) else 0.0,
     }
 
 

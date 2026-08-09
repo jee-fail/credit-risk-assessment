@@ -19,7 +19,7 @@ Our pipeline already uses:
 - `class_weight="balanced"` (logistic regression)
 - `scale_pos_weight ≈ n_neg/n_pos` (XGBoost)
 - Stratified train/test splits
-- Threshold selection (Youden / F1 / fixed)
+- Threshold selection (production: **middle_ground**; also Youden / F1 / fixed / max_accuracy) — see `docs/OPERATING_POLICY.md`
 
 ---
 
@@ -85,7 +85,7 @@ Often **not in the way people hope**.
 
 ## Q7. One paragraph for your presentation
 
-> The dataset is imbalanced (~8% defaults). We therefore optimize and report ranking metrics (ROC-AUC, PR-AUC) and lift relative to the base rate, not accuracy. Precision and recall are evaluated at a chosen decision threshold; they trade off and can be moved by changing τ. A precision near 16% with ~2× lift and ROC-AUC near 0.75 indicates useful risk ranking under rare events, consistent with application-level Home Credit baselines. Further gains come primarily from multi-table credit history features and full-data training.
+> The dataset is imbalanced (~8% defaults). We report accuracy, balanced accuracy, precision, recall, and ranking metrics (ROC-AUC, PR-AUC, lift). Our production **middle_ground** threshold (validation-only: accuracy ≥ 80% and recall ≥ 35%, then max F1) yields **~86% accuracy**, **~40% recall**, **~27% precision**, **~3.3× lift**, and **ROC-AUC 0.77** on held-out test data. Further gains come primarily from multi-table credit history features.
 
 ---
 

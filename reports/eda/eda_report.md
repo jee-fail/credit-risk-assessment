@@ -36,8 +36,8 @@
 ## Implications for the ML pipeline
 
 1. Use **stratified** splits to preserve class balance.
-2. Report **ROC-AUC / PR-AUC**, not accuracy alone.
+2. Report a **suite** of metrics: accuracy, balanced accuracy, precision, recall, ROC-AUC, PR-AUC, lift (not accuracy alone).
 3. Apply **median/mode imputation** and **one-hot encoding** inside a Pipeline.
-4. Handle imbalance with **class_weight / scale_pos_weight** and threshold policy.
+4. Handle imbalance with **class_weight / scale_pos_weight** and a documented threshold policy (`middle_ground` in production — see `docs/OPERATING_POLICY.md`).
 
 _JSON report: `C:\Users\Ibteshamul Haque\credit-risk-assessment\reports\eda\eda_report.json`_

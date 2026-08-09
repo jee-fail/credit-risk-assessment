@@ -33,7 +33,7 @@ This project follows a **standard supervised learning lifecycle** suitable for c
 | Models | Logistic Regression (`class_weight=balanced`), XGBoost (`scale_pos_weight`) |
 | Hyperparameter tuning | `--tune` on full data **completed** for primary pack; search on train, select on **validation** (never test). See `docs/HYPERPARAMETER_TUNING.md` |
 | Selection | Production model chosen by **validation** ROC-AUC (PR-AUC tie-break) |
-| Threshold | Youden / F1 / fixed on **validation only** |
+| Threshold | `middle_ground` / Youden / F1 / fixed / `max_accuracy` on **validation only** (production = **middle_ground**; see `docs/OPERATING_POLICY.md`) |
 | Final metrics | Ranking + operating metrics on **test only** |
 | Explain | `explain.explain_applicant` (SHAP) |
 | Serve | FastAPI + Streamlit; artifacts in `models/` or `models/full_data/` |

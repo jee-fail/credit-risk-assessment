@@ -6,11 +6,12 @@
 |--|--|
 | **Author** | Ibteshamul Haque |
 | **Primary model pack** | `models/full_data/` (**307,511** rows) |
-| **Production model** | **XGBoost** (test ROC-AUC **0.769**, hyperparameter-tuned) |
+| **Production model** | **XGBoost** (test ROC-AUC **0.769**, accuracy **86.2%**, recall **40.1%**) |
+| **Decision policy** | **`middle_ground`** τ=**0.51** (val-only; see [`docs/OPERATING_POLICY.md`](docs/OPERATING_POLICY.md)) |
 | **Lifecycle** | Train / val / test + dummy baseline + HP tuning |
 | **Stack** | scikit-learn · XGBoost · SHAP · FastAPI · Streamlit |
 
-Live status: [`STATUS.md`](STATUS.md)
+Live status: [`STATUS.md`](STATUS.md) · Mentor Q&A: [`docs/MENTOR_VIVA_QA.md`](docs/MENTOR_VIVA_QA.md) · Policy: [`docs/OPERATING_POLICY.md`](docs/OPERATING_POLICY.md)
 
 ---
 
@@ -24,7 +25,9 @@ We map predicted default probability to a credit-card-style decision:
 | \(P(\text{default}) \ge \tau\) | **decline** |
 | \(P(\text{default}) < \tau\) | **approve** |
 
-Threshold \(\tau\) is chosen on the **validation** set (Youden); reported metrics use the **test** set only.
+Threshold \(\tau\) is chosen on the **validation** set with the **`middle_ground`** policy
+(accuracy ≥ 80% and recall ≥ 35% on val, then max F1); reported metrics use the **test** set only.
+Full write-up: [`docs/OPERATING_POLICY.md`](docs/OPERATING_POLICY.md).
 
 ---
 
@@ -45,21 +48,29 @@ Details: [`docs/ML_LIFECYCLE.md`](docs/ML_LIFECYCLE.md)
 
 ## 3. Current results (full data + tuning — primary)
 
-**Source:** `models/full_data/metrics.json`  
+**Source:** `models/full_data/metrics.json` · `models/full_data/metrics_summary.md`  
 **Split:** train 196,806 · val 49,202 · test 61,503 · base rate ≈ 8.07%  
 **HP tuning:** completed (random search on train/val; test never used)  
-**τ ≈ 0.269** (Youden on validation after tuning)
+**τ = 0.510** (`middle_ground` on validation — see [`docs/OPERATING_POLICY.md`](docs/OPERATING_POLICY.md))
 
-| Model | Test ROC-AUC | Test PR-AUC | Precision@τ | Recall@τ | Lift@τ | Prec@top10% |
-|-------|--------------|-------------|-------------|----------|--------|-------------|
-| Dummy (stratified) | 0.502 | 0.081 | 0.084 | 0.083 | 1.04× | 0.082 |
-| Logistic Regression | 0.752 | 0.236 | 0.103 | 0.931 | 1.28× | 0.268 |
-| **XGBoost (production)** | **0.769** | **0.261** | 0.154 | 0.762 | **1.90×** | **0.284** |
+### Production operating point (XGBoost, test)
+
+| Accuracy | Bal. Acc | Precision | Recall | F1 | ROC-AUC | PR-AUC | Lift@τ |
+|----------|----------|-----------|--------|-----|---------|--------|--------|
+| **86.20%** | **65.18%** | **26.54%** | **40.10%** | 0.319 | **0.769** | **0.261** | **3.29×** |
+
+### All models @ production τ
+
+| Model | Accuracy | ROC-AUC | Precision@τ | Recall@τ | Lift@τ |
+|-------|----------|---------|-------------|----------|--------|
+| Dummy (stratified) | 85.3% | 0.502 | 0.084 | 0.083 | 1.04× |
+| Logistic Regression | 70.1% | 0.752 | 0.165 | 0.668 | 2.05× |
+| **XGBoost (production)** | **86.2%** | **0.769** | **0.265** | **0.401** | **3.29×** |
 
 Best XGB (val): n_estimators=350, max_depth=6, learning_rate=0.05, min_child_weight=5, subsample=0.7, scale_pos_weight≈5.69.
 
-Under ~8% defaults, precision alone looks low; **lift ≈ 1.9×** and **ROC-AUC 0.77 vs dummy 0.50** show real skill.  
-See [`docs/IMBALANCE_AND_METRICS_FAQ.md`](docs/IMBALANCE_AND_METRICS_FAQ.md) · [`STATUS.md`](STATUS.md).
+Under ~8% defaults, raw precision is still modest; **lift ≈ 3.3×** and **ROC-AUC 0.77 vs dummy 0.50** show real ranking skill.  
+See [`docs/OPERATING_POLICY.md`](docs/OPERATING_POLICY.md) · [`docs/IMBALANCE_AND_METRICS_FAQ.md`](docs/IMBALANCE_AND_METRICS_FAQ.md) · [`STATUS.md`](STATUS.md).
 
 ### Other packs (comparison only)
 

@@ -23,7 +23,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from credit_risk.config import ARTIFACTS_PATH, METRICS_PATH, MODELS_DIR  # noqa: E402
+from credit_risk.config import ARTIFACTS_PATH, METRICS_PATH  # noqa: E402
 try:
     from credit_risk.config import PROJECT_STATUS  # noqa: E402
 except ImportError:  # older installs / stale process
@@ -368,24 +368,85 @@ def build_shap_chart(top_features: list[dict]) -> go.Figure:
     return fig
 
 
-def build_metrics_bars(metrics: dict) -> go.Figure:
+def _display_model_name(key: str) -> str:
+    return {
+        "logistic_regression": "Logistic Regression",
+        "xgboost": "XGBoost",
+        "dummy_stratified": "Dummy (stratified)",
+    }.get(key, key.replace("_", " ").title())
+
+
+def resolve_view_model(model_choice: str, metrics: dict, bundle) -> str:
+    """Map sidebar 'Score with' choice to a metrics.json model key."""
+    prod = str(
+        (metrics or {}).get("production_model")
+        or (bundle.production_model if bundle else "xgboost")
+    )
+    if model_choice == "production":
+        return prod
+    return model_choice
+
+
+def build_metrics_bars(metrics: dict, highlight_key: str | None = None) -> go.Figure:
     models = metrics.get("models") or {}
-    names, aucs, pras = [], [], []
+    names, accs, aucs, pras, keys = [], [], [], [], []
     for key in ("logistic_regression", "xgboost"):
         m = models.get(key) or {}
         if not m:
             continue
-        names.append("Logistic Regression" if key == "logistic_regression" else "XGBoost")
+        keys.append(key)
+        names.append(_display_model_name(key))
+        op = m.get("operating_point") or {}
+        acc = m.get("accuracy", op.get("accuracy", 0))
+        accs.append(float(acc or 0))
         aucs.append(float(m.get("roc_auc", 0)))
         pras.append(float(m.get("pr_auc", 0)))
+
+    # Dim non-selected model so the chart reacts to sidebar choice
+    def _colors(base: str, alt: str) -> list[str]:
+        if not highlight_key:
+            return [base] * len(keys)
+        return [base if k == highlight_key else alt for k in keys]
+
     fig = go.Figure()
-    fig.add_trace(go.Bar(name="ROC-AUC", x=names, y=aucs, marker_color="#0e7490", text=[f"{v:.3f}" for v in aucs], textposition="outside"))
-    fig.add_trace(go.Bar(name="PR-AUC", x=names, y=pras, marker_color="#7c3aed", text=[f"{v:.3f}" for v in pras], textposition="outside"))
+    fig.add_trace(
+        go.Bar(
+            name="Accuracy",
+            x=names,
+            y=accs,
+            marker_color=_colors("#059669", "#a7f3d0"),
+            text=[f"{v:.1%}" for v in accs],
+            textposition="outside",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name="ROC-AUC",
+            x=names,
+            y=aucs,
+            marker_color=_colors("#0e7490", "#99f6e4"),
+            text=[f"{v:.3f}" for v in aucs],
+            textposition="outside",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name="PR-AUC",
+            x=names,
+            y=pras,
+            marker_color=_colors("#7c3aed", "#ddd6fe"),
+            text=[f"{v:.3f}" for v in pras],
+            textposition="outside",
+        )
+    )
+    title = "Held-out evaluation metrics"
+    if highlight_key:
+        title += f" — selected: {_display_model_name(highlight_key)}"
     fig.update_layout(
         barmode="group",
-        height=360,
-        yaxis=dict(range=[0, 1], title="Score"),
-        title="Held-out evaluation metrics",
+        height=380,
+        yaxis=dict(range=[0, 1.05], title="Score"),
+        title=title,
         plot_bgcolor="#f8fafc",
         paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
@@ -414,8 +475,6 @@ with st.sidebar:
         st.stop()
 
     st.markdown("---")
-    st.markdown("**Artifact pack**")
-    st.code(str(MODELS_DIR), language="text")
     st.markdown("**Production model**")
     st.write(bundle.production_model.replace("_", " ").title())
     st.markdown("**Default threshold (τ)**")
@@ -437,6 +496,7 @@ with st.sidebar:
             "logistic_regression": "Logistic Regression",
             "xgboost": "XGBoost",
         }[x],
+        help="Used for applicant scoring AND for which model’s metrics are highlighted on the Metrics tab.",
     )
     thr_override = st.slider(
         "Decision threshold override",
@@ -751,35 +811,140 @@ with tab_metrics:
     if not metrics:
         st.warning("No metrics.json found. Train the model first.")
     else:
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Production model", str(metrics.get("production_model", "—")).replace("_", " "))
-        c2.metric("Threshold", f"{float(metrics.get('threshold', 0)):.3f}")
-        c3.metric("Sample size", f"{metrics.get('n_rows_used', metrics.get('sample_size', '—')):,}")
-        c4.metric("Features", str(metrics.get("n_features", "—")))
+        # Follow sidebar "Score with" so headlines change when the model changes
+        view_key = resolve_view_model(model_choice, metrics, bundle)
+        prod_key = str(metrics.get("production_model", "xgboost"))
+        view_m = (metrics.get("models") or {}).get(view_key) or {}
+        view_op = view_m.get("operating_point") or {}
+        view_acc = view_m.get("accuracy", view_op.get("accuracy"))
+        view_bal = view_m.get("balanced_accuracy", view_op.get("balanced_accuracy"))
 
-        st.plotly_chart(build_metrics_bars(metrics), use_container_width=True)
-
-        rows = []
-        for key, m in (metrics.get("models") or {}).items():
-            rows.append(
-                {
-                    "Model": key,
-                    "ROC-AUC": round(float(m.get("roc_auc", 0)), 4),
-                    "PR-AUC": round(float(m.get("pr_auc", 0)), 4),
-                    "Precision": round(float(m.get("precision", 0)), 4),
-                    "Recall": round(float(m.get("recall", 0)), 4),
-                    "Train rows": m.get("n_train"),
-                    "Test rows": m.get("n_test"),
-                }
+        is_prod_view = view_key == prod_key
+        st.markdown(
+            f"**Viewing metrics for:** `{_display_model_name(view_key)}`"
+            + (" *(production)*" if is_prod_view else "")
+            + f" · change via sidebar **Score with**"
+        )
+        if not view_m:
+            st.warning(f"No held-out metrics found for `{view_key}` in metrics.json.")
+        else:
+            # Headline row — tracks selected model
+            h1, h2, h3, h4 = st.columns(4)
+            h1.metric(
+                "Accuracy (test)",
+                f"{float(view_acc):.2%}" if view_acc is not None else "—",
             )
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            h2.metric(
+                "Recall (test)",
+                f"{float(view_m.get('recall', 0)):.2%}",
+            )
+            h3.metric(
+                "Precision (test)",
+                f"{float(view_m.get('precision', 0)):.2%}",
+            )
+            h4.metric(
+                "ROC-AUC (test)",
+                f"{float(view_m.get('roc_auc', 0)):.4f}",
+            )
 
-        thr_info = metrics.get("threshold_info") or {}
-        if thr_info:
-            st.markdown("#### Threshold selection")
-            st.json(thr_info)
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric(
+                "Balanced accuracy",
+                f"{float(view_bal):.2%}" if view_bal is not None else "—",
+            )
+            thr_strategy = (metrics.get("threshold_info") or {}).get("strategy", "—")
+            c2.metric("Threshold strategy", str(thr_strategy))
+            c3.metric("Threshold τ", f"{float(metrics.get('threshold', 0)):.3f}")
+            c4.metric(
+                "Lift@τ",
+                f"{float(view_op.get('lift_vs_base_rate', 0)):.2f}×"
+                if view_op.get("lift_vs_base_rate") is not None
+                else "—",
+            )
 
-        st.caption(metrics.get("note", ""))
+            st.caption(
+                "All models are scored at the **same production threshold τ** "
+                "(decision policy). ROC-AUC/PR-AUC are ranking metrics and do not depend on τ. "
+                "Switch **Score with** in the sidebar to refresh these headlines."
+            )
+
+            st.plotly_chart(
+                build_metrics_bars(metrics, highlight_key=view_key),
+                use_container_width=True,
+            )
+
+            rows = []
+            for key, m in (metrics.get("models") or {}).items():
+                op = m.get("operating_point") or {}
+                acc = m.get("accuracy", op.get("accuracy"))
+                bal = m.get("balanced_accuracy", op.get("balanced_accuracy"))
+                label = _display_model_name(key)
+                if key == view_key:
+                    label = f"★ {label} (selected)"
+                if key == prod_key and key != view_key:
+                    label = f"{label} (production)"
+                rows.append(
+                    {
+                        "Model": label,
+                        "Accuracy": round(float(acc), 4) if acc is not None else None,
+                        "Balanced Acc": round(float(bal), 4) if bal is not None else None,
+                        "ROC-AUC": round(float(m.get("roc_auc", 0)), 4),
+                        "PR-AUC": round(float(m.get("pr_auc", 0)), 4),
+                        "Precision": round(float(m.get("precision", 0)), 4),
+                        "Recall": round(float(m.get("recall", 0)), 4),
+                        "NPV": round(float(op.get("npv", 0)), 4)
+                        if op.get("npv") is not None
+                        else None,
+                        "Specificity": round(float(op.get("specificity", 0)), 4)
+                        if op.get("specificity") is not None
+                        else None,
+                        "Lift": round(float(op.get("lift_vs_base_rate", 0)), 3)
+                        if op.get("lift_vs_base_rate") is not None
+                        else None,
+                    }
+                )
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+            thr_info = metrics.get("threshold_info") or {}
+            if thr_info:
+                st.markdown("#### Threshold selection (validation only)")
+                st.json(thr_info)
+
+            pol = metrics.get("policy_comparison") or {}
+            strat_map = pol.get("strategies") or {}
+            if strat_map:
+                st.markdown(
+                    "#### Policy comparison "
+                    f"(scores from **production model** `{_display_model_name(prod_key)}`; "
+                    "each τ chosen on validation → metrics on test)"
+                )
+                if view_key != prod_key:
+                    st.caption(
+                        "Policy comparison is for the production model’s probability scores, "
+                        "not for the currently selected scoring model."
+                    )
+                pc_rows = []
+                for name, row in strat_map.items():
+                    t = row.get("test") or {}
+                    pc_rows.append(
+                        {
+                            "Policy": name
+                            + (" ★ production" if name == pol.get("production_strategy") else ""),
+                            "τ": round(float(row.get("threshold", 0)), 3),
+                            "Accuracy": round(float(t.get("accuracy", 0)), 4),
+                            "Recall": round(float(t.get("recall", 0)), 4),
+                            "Precision": round(float(t.get("precision", 0)), 4),
+                            "Bal Acc": round(float(t.get("balanced_accuracy", 0)), 4),
+                            "F1": round(float(t.get("f1", 0)), 4),
+                            "Lift": round(float(t.get("lift_vs_base_rate", 0)), 3),
+                        }
+                    )
+                st.dataframe(pd.DataFrame(pc_rows), use_container_width=True, hide_index=True)
+
+            st.caption(metrics.get("note", ""))
+            st.info(
+                "Mentor prep: full Q&A in `docs/MENTOR_VIVA_QA.md` · policy in `docs/OPERATING_POLICY.md`"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -796,7 +961,7 @@ payment difficulties (default risk) using Home Credit–style application featur
 |-------|----------------|
 | Models | Logistic Regression + XGBoost |
 | Preprocessing | Median/mode impute, scaling (LR), one-hot encoding |
-| Decision | Decline if P(default) >= threshold |
+| Decision | Decline if P(default) ≥ τ (**middle_ground** policy, val-only) |
 | Explainability | SHAP local feature contributions |
 | API | FastAPI (`credit_risk.api`) |
 | This UI | Streamlit dashboard |
@@ -805,7 +970,7 @@ payment difficulties (default risk) using Home Credit–style application featur
 1. Pick a **preset** (low / mid / high risk) or enter your own values.
 2. Click **Run assessment**.
 3. Show the gauge, decision banner, and SHAP chart.
-4. Open **Model metrics** for ROC-AUC / PR-AUC.
+4. Open **Model metrics** for **accuracy / recall / ROC-AUC** (production τ).
 
 ### Commands
 ```powershell
@@ -821,6 +986,7 @@ payment difficulties (default risk) using Home Credit–style application featur
 
 ### Academic note
 This is an **educational** system. It is not a licensed bank underwriting product.
-Metrics in the Metrics tab reflect the last training run (check sample size).
+Metrics reflect the full-data pack + **middle_ground** threshold policy
+(see `docs/OPERATING_POLICY.md` and `STATUS.md`).
         """
     )

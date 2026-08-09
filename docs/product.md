@@ -12,7 +12,7 @@ Home Credit’s `TARGET` measures **payment difficulties**, which we treat as th
 
 ## Threshold \(\tau\)
 
-- Default policy: **auto-select** on held-out scores (Youden’s J), or F1 / fixed 0.5 via CLI.  
+- Default production policy: **`middle_ground`** on validation (accuracy ≥ 80% & recall ≥ 35%, max F1). Alternatives: Youden / F1 / fixed / max_accuracy via CLI or `scripts/retarget_threshold.py`. See `docs/OPERATING_POLICY.md`.  
 - Request-time override: API field `threshold` (for demos and sensitivity analysis).  
 - Stored permanently in `models/credit_risk_bundle.joblib` after training.
 

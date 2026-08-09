@@ -24,7 +24,9 @@ import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
+    accuracy_score,
     average_precision_score,
+    balanced_accuracy_score,
     f1_score,
     precision_score,
     recall_score,
@@ -64,6 +66,8 @@ class ModelMetrics:
     name: str
     roc_auc: float
     pr_auc: float
+    accuracy: float
+    balanced_accuracy: float
     precision: float
     recall: float
     n_train: int
@@ -99,6 +103,8 @@ def _evaluate(
         name=name,
         roc_auc=float(roc_auc_score(y_true, proba)),
         pr_auc=float(average_precision_score(y_true, proba)),
+        accuracy=float(accuracy_score(y_true, pred)),
+        balanced_accuracy=float(balanced_accuracy_score(y_true, pred)),
         precision=float(precision_score(y_true, pred, zero_division=0)),
         recall=float(recall_score(y_true, pred, zero_division=0)),
         n_train=n_train,
@@ -109,6 +115,18 @@ def _evaluate(
     )
 
 
+def _threshold_stats(y_true: np.ndarray, proba: np.ndarray, thr: float) -> dict[str, float]:
+    pred = (proba >= thr).astype(int)
+    return {
+        "threshold": float(thr),
+        "accuracy": float(accuracy_score(y_true, pred)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_true, pred)),
+        "f1": float(f1_score(y_true, pred, zero_division=0)),
+        "precision": float(precision_score(y_true, pred, zero_division=0)),
+        "recall": float(recall_score(y_true, pred, zero_division=0)),
+    }
+
+
 def select_threshold(
     y_true: np.ndarray,
     proba: np.ndarray,
@@ -117,14 +135,9 @@ def select_threshold(
     """Choose decision threshold on a single labeled split (use VALIDATION only)."""
     if strategy == "fixed":
         thr = 0.5
-        pred = (proba >= thr).astype(int)
-        return {
-            "threshold": thr,
-            "strategy": strategy,
-            "f1": float(f1_score(y_true, pred, zero_division=0)),
-            "precision": float(precision_score(y_true, pred, zero_division=0)),
-            "recall": float(recall_score(y_true, pred, zero_division=0)),
-        }
+        out = _threshold_stats(y_true, proba, thr)
+        out["strategy"] = strategy
+        return out
 
     if strategy == "f1":
         best_thr, best_f1 = 0.5, -1.0
@@ -133,14 +146,87 @@ def select_threshold(
             f1 = float(f1_score(y_true, pred, zero_division=0))
             if f1 > best_f1:
                 best_f1, best_thr = f1, float(thr)
-        pred = (proba >= best_thr).astype(int)
-        return {
-            "threshold": best_thr,
-            "strategy": strategy,
-            "f1": float(f1_score(y_true, pred, zero_division=0)),
-            "precision": float(precision_score(y_true, pred, zero_division=0)),
-            "recall": float(recall_score(y_true, pred, zero_division=0)),
+        out = _threshold_stats(y_true, proba, best_thr)
+        out["strategy"] = strategy
+        return out
+
+    if strategy == "max_accuracy":
+        # Maximize accuracy on validation; break ties with balanced_accuracy then recall
+        # so we still flag some risk when many thresholds share the same accuracy.
+        best_thr = 0.5
+        best_key = (-1.0, -1.0, -1.0)
+        for thr in np.linspace(0.05, 0.95, 91):
+            pred = (proba >= thr).astype(int)
+            acc = float(accuracy_score(y_true, pred))
+            bal = float(balanced_accuracy_score(y_true, pred))
+            rec = float(recall_score(y_true, pred, zero_division=0))
+            key = (acc, bal, rec)
+            if key > best_key:
+                best_key = key
+                best_thr = float(thr)
+        out = _threshold_stats(y_true, proba, best_thr)
+        out["strategy"] = "max_accuracy"
+        out["selection_note"] = (
+            "Threshold chosen to maximize validation accuracy "
+            "(ties broken by balanced accuracy, then recall)."
+        )
+        return out
+
+    if strategy == "middle_ground":
+        # Production policy: keep accuracy high enough for review while preserving
+        # meaningful default recall. Constraints fixed a priori (not tuned on test).
+        # 1) On validation, keep candidates with accuracy >= 0.80 and recall >= 0.35
+        # 2) Among survivors maximize F1 (precision–recall balance)
+        # 3) Ties: balanced_accuracy, then accuracy, then recall
+        # 4) If no survivor: maximize harmonic mean of accuracy and recall
+        min_acc = 0.80
+        min_rec = 0.35
+        candidates: list[tuple[tuple[float, float, float, float], float]] = []
+        fallback_best_thr = 0.5
+        fallback_key = (-1.0, -1.0, -1.0)
+        for thr in np.linspace(0.05, 0.95, 91):
+            stats = _threshold_stats(y_true, proba, thr)
+            acc = stats["accuracy"]
+            rec = stats["recall"]
+            bal = stats["balanced_accuracy"]
+            f1 = stats["f1"]
+            harm = (
+                0.0
+                if (acc + rec) == 0
+                else float(2.0 * acc * rec / (acc + rec))
+            )
+            if acc >= min_acc and rec >= min_rec:
+                key = (f1, bal, acc, rec)
+                candidates.append((key, float(thr)))
+            fb_key = (harm, bal, f1)
+            if fb_key > fallback_key:
+                fallback_key = fb_key
+                fallback_best_thr = float(thr)
+
+        if candidates:
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            best_thr = candidates[0][1]
+            mode = "constrained_f1"
+        else:
+            best_thr = fallback_best_thr
+            mode = "fallback_harmonic_acc_recall"
+
+        out = _threshold_stats(y_true, proba, best_thr)
+        out["strategy"] = "middle_ground"
+        out["selection_mode"] = mode
+        out["constraints"] = {
+            "min_accuracy_validation": min_acc,
+            "min_recall_validation": min_rec,
+            "objective": "maximize F1 among feasible thresholds",
+            "tie_breakers": ["balanced_accuracy", "accuracy", "recall"],
+            "n_feasible_on_validation": int(len(candidates)),
         }
+        out["selection_note"] = (
+            "Middle-ground policy: validation threshold with accuracy≥80% and "
+            "recall≥35%, maximizing F1. No test labels used for selection. "
+            "Models/probabilities unchanged — decision cut-off only."
+        )
+        return out
 
     fpr, tpr, thresholds = roc_curve(y_true, proba)
     j = tpr - fpr
@@ -149,15 +235,10 @@ def select_threshold(
     if not np.isfinite(best_thr):
         best_thr = 0.5
     best_thr = float(np.clip(best_thr, 0.01, 0.99))
-    pred = (proba >= best_thr).astype(int)
-    return {
-        "threshold": best_thr,
-        "strategy": "youden",
-        "youden_j": float(j[idx]),
-        "f1": float(f1_score(y_true, pred, zero_division=0)),
-        "precision": float(precision_score(y_true, pred, zero_division=0)),
-        "recall": float(recall_score(y_true, pred, zero_division=0)),
-    }
+    out = _threshold_stats(y_true, proba, best_thr)
+    out["strategy"] = "youden"
+    out["youden_j"] = float(j[idx])
+    return out
 
 
 def build_logistic_pipeline(
@@ -214,7 +295,7 @@ def train_models(
     artifacts_path: Optional[Path] = None,
     metrics_path: Optional[Path] = None,
     threshold: Optional[float] = None,
-    threshold_strategy: str = "youden",
+    threshold_strategy: str = "middle_ground",
     random_state: int = RANDOM_STATE,
     preferred_model: str = PREFERRED_MODEL,
     multi_table: bool = False,
@@ -667,8 +748,8 @@ def train_models(
         "note": (
             "Academic lifecycle: stratified train/val/test. "
             "Models fit on train; production model and threshold chosen on validation; "
-            "reported ROC-AUC/PR-AUC/precision/recall/lift are on untouched test. "
-            "Dummy stratified baseline included. "
+            "reported accuracy / balanced accuracy / ROC-AUC / PR-AUC / precision / recall "
+            "are on untouched test. Dummy stratified baseline included. "
             "TARGET=1 = payment difficulties; decline if P(default) >= threshold."
         ),
     }
@@ -689,25 +770,25 @@ def train_models(
                 f"- Multi-table: **{multi_table}** | Features: **{len(feature_columns)}**",
                 f"- Test base rate: **{float(y_test.mean()):.2%}**",
                 "",
-                "| Model | Split | ROC-AUC | PR-AUC | Precision@tau | Recall@tau | Lift@tau | Prec@top10% |",
-                "|-------|-------|---------|--------|---------------|------------|----------|-------------|",
+                "| Model | Split | Accuracy | Bal. Acc | ROC-AUC | PR-AUC | Precision@tau | Recall@tau | Lift@tau |",
+                "|-------|-------|----------|----------|---------|--------|---------------|------------|----------|",
                 (
-                    f"| Dummy (stratified) | test | {dummy_metrics.roc_auc:.4f} | {dummy_metrics.pr_auc:.4f} | "
+                    f"| Dummy (stratified) | test | {dummy_metrics.accuracy:.4f} | {dummy_metrics.balanced_accuracy:.4f} | "
+                    f"{dummy_metrics.roc_auc:.4f} | {dummy_metrics.pr_auc:.4f} | "
                     f"{dummy_metrics.precision:.4f} | {dummy_metrics.recall:.4f} | "
-                    f"{dummy_report['operating_point']['lift_vs_base_rate']:.2f}x | "
-                    f"{dummy_rank.get('precision_at_top_10pct', 0):.4f} |"
+                    f"{dummy_report['operating_point']['lift_vs_base_rate']:.2f}x |"
                 ),
                 (
-                    f"| Logistic Regression | test | {lr_metrics.roc_auc:.4f} | {lr_metrics.pr_auc:.4f} | "
+                    f"| Logistic Regression | test | {lr_metrics.accuracy:.4f} | {lr_metrics.balanced_accuracy:.4f} | "
+                    f"{lr_metrics.roc_auc:.4f} | {lr_metrics.pr_auc:.4f} | "
                     f"{lr_metrics.precision:.4f} | {lr_metrics.recall:.4f} | "
-                    f"{lr_report['operating_point']['lift_vs_base_rate']:.2f}x | "
-                    f"{lr_rank.get('precision_at_top_10pct', 0):.4f} |"
+                    f"{lr_report['operating_point']['lift_vs_base_rate']:.2f}x |"
                 ),
                 (
-                    f"| XGBoost | test | {xgb_metrics.roc_auc:.4f} | {xgb_metrics.pr_auc:.4f} | "
+                    f"| **XGBoost** | test | **{xgb_metrics.accuracy:.4f}** | {xgb_metrics.balanced_accuracy:.4f} | "
+                    f"{xgb_metrics.roc_auc:.4f} | {xgb_metrics.pr_auc:.4f} | "
                     f"{xgb_metrics.precision:.4f} | {xgb_metrics.recall:.4f} | "
-                    f"{xgb_report['operating_point']['lift_vs_base_rate']:.2f}x | "
-                    f"{xgb_rank.get('precision_at_top_10pct', 0):.4f} |"
+                    f"{xgb_report['operating_point']['lift_vs_base_rate']:.2f}x |"
                 ),
                 "",
                 "## Academic checklist",
@@ -760,8 +841,9 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser.add_argument(
         "--threshold-strategy",
         type=str,
-        default="youden",
-        choices=["youden", "f1", "fixed"],
+        default="middle_ground",
+        choices=["youden", "f1", "fixed", "max_accuracy", "middle_ground"],
+        help="How to pick tau on VALIDATION (production default: middle_ground).",
     )
     parser.add_argument("--multi-table", action="store_true")
     parser.add_argument("--no-eda", action="store_true", help="Skip EDA report generation")

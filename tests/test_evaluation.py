@@ -41,3 +41,22 @@ def test_full_report_structure():
     assert rep["name"] == "demo"
     assert "ranking" in rep and "operating_point" in rep
     assert len(rep["threshold_sweep"]) >= 5
+    op = rep["operating_point"]
+    assert "npv" in op and "fpr" in op and "accuracy" in op
+
+
+def test_middle_ground_threshold_respects_floors_when_feasible():
+    from credit_risk.train import select_threshold
+
+    rng = np.random.RandomState(0)
+    n = 5000
+    y = (rng.rand(n) < 0.08).astype(int)
+    # Well-separated scores so feasible middle-ground region exists
+    p = np.clip(0.15 * y + 0.05 * rng.rand(n) + 0.35 * y, 0, 1)
+    info = select_threshold(y, p, strategy="middle_ground")
+    assert info["strategy"] == "middle_ground"
+    assert 0.05 <= info["threshold"] <= 0.95
+    # On this synthetic set, floors should be achievable
+    if info.get("selection_mode") == "constrained_f1":
+        assert info["accuracy"] >= 0.80 - 1e-9
+        assert info["recall"] >= 0.35 - 1e-9
