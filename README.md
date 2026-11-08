@@ -4,7 +4,7 @@
 
 | | |
 |--|--|
-| **Author** | Sudhanshu |
+| **Author** | Sudhanshu Kumar|
 | **Primary model pack** | `models/full_data/` (**307,511** rows) |
 | **Production model** | **XGBoost** (test ROC-AUC **0.769**, accuracy **86.2%**, recall **40.1%**) |
 | **Decision policy** | **`middle_ground`** τ=**0.51** (val-only; see [`docs/OPERATING_POLICY.md`](docs/OPERATING_POLICY.md)) |
