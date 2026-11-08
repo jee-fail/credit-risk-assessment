@@ -4,7 +4,7 @@
 
 | | |
 |--|--|
-| **Author** | Ibteshamul Haque |
+| **Author** | Sudhanshu |
 | **Primary model pack** | `models/full_data/` (**307,511** rows) |
 | **Production model** | **XGBoost** (test ROC-AUC **0.769**, accuracy **86.2%**, recall **40.1%**) |
 | **Decision policy** | **`middle_ground`** τ=**0.51** (val-only; see [`docs/OPERATING_POLICY.md`](docs/OPERATING_POLICY.md)) |
@@ -22,10 +22,10 @@ We map predicted default probability to a credit-card-style decision:
 
 | Rule | Decision |
 |------|----------|
-| \(P(\text{default}) \ge \tau\) | **decline** |
-| \(P(\text{default}) < \tau\) | **approve** |
+| P(default) ≥ τ | **decline** |
+| P(default) < τ | **approve** |
 
-Threshold \(\tau\) is chosen on the **validation** set with the **`middle_ground`** policy
+Threshold τ is chosen on the **validation** set with the **`middle_ground`** policy
 (accuracy ≥ 80% and recall ≥ 35% on val, then max F1); reported metrics use the **test** set only.
 Full write-up: [`docs/OPERATING_POLICY.md`](docs/OPERATING_POLICY.md).
 
@@ -103,17 +103,18 @@ credit-risk-assessment/
 
 ## 5. Setup
 
-```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -U pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m pip install -e .
+```bash
+cd ~/credit-risk-assessment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -r requirements.txt
+pip install -e .
 ```
 
 Dataset default:
 
-`C:\Users\Ibteshamul Haque\Downloads\home-credit-default-risk\application_train.csv`
+`~/Downloads/home-credit-default-risk/application_train.csv`
 
 ---
 
@@ -121,25 +122,25 @@ Dataset default:
 
 Uses **full-data** model automatically when present:
 
-```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
-.\.venv\Scripts\python.exe -m streamlit run dashboard/app.py
+```bash
+cd ~/credit-risk-assessment
+.venv/bin/python -m streamlit run dashboard/app.py
 ```
 
 Open **http://localhost:8501** → Score applicant → presets or your values → Run assessment.
 
 Force sample model:
 
-```powershell
-$env:CREDIT_RISK_MODELS_DIR = "$PWD\models"
+```bash
+export CREDIT_RISK_MODELS_DIR="\$PWD/models"
 ```
 
 ---
 
 ## 7. Run API
 
-```powershell
-.\.venv\Scripts\python.exe -m uvicorn credit_risk.api:app --host 127.0.0.1 --port 8000
+```bash
+.venv/bin/python -m uvicorn credit_risk.api:app --host 127.0.0.1 --port 8000
 ```
 
 Docs: http://127.0.0.1:8000/docs  
@@ -149,18 +150,18 @@ Endpoints: `/health` · `/metrics` · `/features` · `/assess` · `/explain`
 
 ## 8. Train
 
-```powershell
+```bash
 # Full academic lifecycle (307k) → models/full_data/
-.\.venv\Scripts\python.exe scripts\run_academic_lifecycle.py
+.venv/bin/python scripts/run_academic_lifecycle.py
 
 # Fast iteration sample
-.\.venv\Scripts\python.exe -m credit_risk.train --sample-size 30000 --model auto --no-eda
+.venv/bin/python -m credit_risk.train --sample-size 30000 --model auto --no-eda
 
 # Optional multi-table features
-.\.venv\Scripts\python.exe -m credit_risk.train --sample-size 30000 --multi-table --model auto
+.venv/bin/python -m credit_risk.train --sample-size 30000 --multi-table --model auto
 
 # Re-run full data + hyperparameter tuning (already completed once)
-.\.venv\Scripts\python.exe -m credit_risk.train --sample-size 0 --tune --tune-iter 10 --artifacts models/full_data/credit_risk_bundle.joblib --metrics models/full_data/metrics.json --no-eda
+.venv/bin/python -m credit_risk.train --sample-size 0 --tune --tune-iter 10 --artifacts models/full_data/credit_risk_bundle.joblib --metrics models/full_data/metrics.json --no-eda
 ```
 
 Tuning docs: [`docs/HYPERPARAMETER_TUNING.md`](docs/HYPERPARAMETER_TUNING.md) — **primary pack already includes a completed tune run.**
@@ -169,8 +170,8 @@ Tuning docs: [`docs/HYPERPARAMETER_TUNING.md`](docs/HYPERPARAMETER_TUNING.md) �
 
 ## 9. Tests
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+```bash
+.venv/bin/python -m pytest -q
 ```
 
 ---
