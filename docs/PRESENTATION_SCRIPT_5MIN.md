@@ -1,8 +1,8 @@
 # 5-Minute Technical Presentation Script  
 ## Credit Risk Assessment System
 
-**Speaker:** Ibteshamul Haque  
-**Repo:** https://github.com/titoatwork/credit-risk-assessment  
+**Speaker:** Sudhanshu Kumar  
+**Repo:** https://github.com/jee-fail/credit-risk-assessment  
 **Total time:** ~5:00 (tight; practice once with a timer)
 
 ---
@@ -18,7 +18,7 @@ Have open on screen (tabs ready):
 Start dashboard beforehand:
 
 ```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
+cd "~/credit-risk-assessment"
 .\.venv\Scripts\python.exe -m streamlit run dashboard/app.py
 ```
 
@@ -44,7 +44,7 @@ cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
 ### [0:00–0:40] Opening — problem & goal  
 *(Speak clearly; face the audience. No slides required if dashboard is ready.)*
 
-> “Good morning. I’m **Ibteshamul Haque**, and this is my project: a **Credit Risk Assessment System**.
+> “Good morning. I’m **Sudhanshu Kumar**, and this is my project: a **Credit Risk Assessment System**.
 >
 > The problem is simple to state and hard to solve: given an applicant’s financial and demographic profile, should we **approve or decline** a credit product, and **why**?
 >
@@ -164,7 +164,7 @@ cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
 ## 30-second “emergency” version  
 *(If cut short)*
 
-> “Credit risk system on 307k Home Credit applicants. Imbalanced ~8% defaults. Stratified train/val/test; dummy baseline 0.50 AUC; production XGBoost 0.77 AUC after validation tuning. Decision by threshold on default probability; declines explained with SHAP. Served as FastAPI and Streamlit. Code on GitHub under titoatwork/credit-risk-assessment.”
+> “Credit risk system on 307k Home Credit applicants. Imbalanced ~8% defaults. Stratified train/val/test; dummy baseline 0.50 AUC; production XGBoost 0.77 AUC after validation tuning. Decision by threshold on default probability; declines explained with SHAP. Served as FastAPI and Streamlit. Code on GitHub under jee-fail/credit-risk-assessment.”
 
 ---
 
@@ -213,4 +213,4 @@ cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
 ```
 
 **Repo to mention once:**  
-`github.com/titoatwork/credit-risk-assessment`
+`github.com/jee-fail/credit-risk-assessment`

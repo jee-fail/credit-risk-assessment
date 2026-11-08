@@ -1,7 +1,7 @@
 # Mentor / viva Q&A — exhaustive preparation
 
 **Project:** Credit Risk Assessment System  
-**Author:** Ibteshamul Haque  
+**Author:** Sudhanshu Kumar  
 **Primary pack:** `models/full_data/` (307,511 rows, XGBoost, τ=`middle_ground` = **0.51**)  
 **Live numbers:** `STATUS.md` · `models/full_data/metrics_summary.md` · `docs/OPERATING_POLICY.md`
 

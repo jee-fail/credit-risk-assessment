@@ -106,7 +106,7 @@ Split: train **196,806** / val **49,202** / test **61,503**.
 ## Commands
 
 ```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
+cd "~/credit-risk-assessment"
 
 # Dashboard / API
 .\.venv\Scripts\python.exe -m streamlit run dashboard/app.py

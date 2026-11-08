@@ -34,7 +34,7 @@ Policy details: [`OPERATING_POLICY.md`](OPERATING_POLICY.md)
 ### Dashboard
 
 ```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
+cd "~/credit-risk-assessment"
 .\.venv\Scripts\python.exe -m streamlit run dashboard/app.py
 ```
 

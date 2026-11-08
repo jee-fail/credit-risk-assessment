@@ -12,7 +12,7 @@ Set-Location (Split-Path $PSScriptRoot -Parent)
 $GitHubUser = $env:GITHUB_USER
 if (-not $GitHubUser) {
   # Default from local git credentials history; change if wrong
-  $GitHubUser = "titoatwork"
+  $GitHubUser = "jee-fail"
 }
 $RepoName = "credit-risk-assessment"
 $sshUrl = "git@github.com:$GitHubUser/$RepoName.git"

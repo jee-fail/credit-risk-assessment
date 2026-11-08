@@ -50,7 +50,7 @@ This project follows a **standard supervised learning lifecycle** suitable for c
 ## How to run the full lifecycle
 
 ```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
+cd "~/credit-risk-assessment"
 
 # EDA only
 .\.venv\Scripts\python.exe -m credit_risk.eda --sample-size 0

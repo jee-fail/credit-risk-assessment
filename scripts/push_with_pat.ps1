@@ -4,12 +4,12 @@
 #    https://github.com/settings/tokens/new
 #    Scopes: check "repo"
 # 2) Paste the token into this file ONLY (one line, no quotes):
-#    C:\Users\Ibteshamul Haque\credit-risk-assessment\.github_pat
+#    ~/credit-risk-assessment\.github_pat
 #    (this file is gitignored)
 # 3) Run:
 #    powershell -ExecutionPolicy Bypass -File scripts\push_with_pat.ps1
 #
-# Optional: set username if not titoatwork
+# Optional: set username if not jee-fail
 #    $env:GITHUB_USER = "yourusername"
 
 $ErrorActionPreference = "Stop"
@@ -32,7 +32,7 @@ if ($token.Length -lt 20) {
 }
 
 $user = $env:GITHUB_USER
-if (-not $user) { $user = "titoatwork" }
+if (-not $user) { $user = "jee-fail" }
 $repo = "credit-risk-assessment"
 
 $headers = @{

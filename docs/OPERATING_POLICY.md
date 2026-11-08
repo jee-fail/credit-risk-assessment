@@ -108,7 +108,7 @@ This table is also in `models/full_data/metrics.json` → `policy_comparison`.
 ## 5. How to reproduce / re-apply
 
 ```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
+cd "~/credit-risk-assessment"
 
 # Apply middle-ground policy (default) — no retrain
 .\.venv\Scripts\python.exe scripts\retarget_threshold.py --strategy middle_ground

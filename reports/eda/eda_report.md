@@ -40,4 +40,4 @@
 3. Apply **median/mode imputation** and **one-hot encoding** inside a Pipeline.
 4. Handle imbalance with **class_weight / scale_pos_weight** and a documented threshold policy (`middle_ground` in production — see `docs/OPERATING_POLICY.md`).
 
-_JSON report: `C:\Users\Ibteshamul Haque\credit-risk-assessment\reports\eda\eda_report.json`_
+_JSON report: `~/credit-risk-assessment\reports\eda\eda_report.json`_

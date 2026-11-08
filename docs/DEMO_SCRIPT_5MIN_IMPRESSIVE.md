@@ -1,7 +1,7 @@
 # 5-Minute Impressive Demo Script  
 ## Credit Risk Assessment System
 
-**Speaker:** Ibteshamul Haque  
+**Speaker:** Sudhanshu Kumar  
 **Duration:** ~5:00 (tight — practice once with a timer)  
 **Open before you start:** Dashboard http://localhost:8501 · optional `STATUS.md`
 
@@ -37,7 +37,7 @@
 
 ### [0:00–0:45] Opening — problem & stakes
 
-> “Good morning. I’m **Ibteshamul Haque**, and this is my **Credit Risk Assessment System**.
+> “Good morning. I’m **Sudhanshu Kumar**, and this is my **Credit Risk Assessment System**.
 >
 > Every day, lenders face a hard binary decision: given only an application profile, should we **approve** credit—or **decline**—and **why**?
 >

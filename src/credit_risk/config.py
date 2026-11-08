@@ -21,7 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # Default Home Credit dataset location (user-provided)
 DEFAULT_DATA_DIR = Path(
-    r"C:\Users\Ibteshamul Haque\Downloads\home-credit-default-risk"
+    r"C:\Users\Sudhanshu Kumar\Downloads\home-credit-default-risk"
 )
 
 # Allow override via env

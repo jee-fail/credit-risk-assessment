@@ -35,6 +35,6 @@ Artifacts: `reports/spectrum_1000/`
 ## Run all tests
 
 ```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
+cd "~/credit-risk-assessment"
 .\.venv\Scripts\python.exe -m pytest -q
 ```

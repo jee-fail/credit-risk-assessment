@@ -11,7 +11,7 @@
 ## How to run
 
 ```powershell
-cd "C:\Users\Ibteshamul Haque\credit-risk-assessment"
+cd "~/credit-risk-assessment"
 
 # Full data + hyperparameter search → models/full_data (separate from 50k pack)
 .\.venv\Scripts\python.exe -m credit_risk.train `
